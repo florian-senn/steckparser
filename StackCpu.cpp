@@ -21,11 +21,16 @@ void StackCpu::execute() {
 
         const auto &program = m_program.at(i);
         std::string input;
+        short address;
+        short return_value;
         switch (program.getInstruction()) {
             case NOP:
                 break;
             case ADD:
                 add();
+                break;
+            case SUB:
+                sub();
                 break;
             case LDI:
                 loadInteger(program.getArgument());
@@ -38,6 +43,34 @@ void StackCpu::execute() {
                 break;
             case JUMP:
                 i = program.getArgument() - 1;
+                break;
+            case JE:
+                if (!jumpIfFalse()) {
+                    i = program.getArgument() - 1;
+                }
+                break;
+            case JNE:
+                if (jumpIfFalse()) {
+                    i = program.getArgument() - 1;
+                }
+                break;
+            case CALL:
+                //Save address location of function
+                address = static_cast<short>(m_stack.at(m_stackHeight--));
+                //Set previous framePointer location
+                m_stack.at(++m_stackHeight) = m_fPointer;
+                //Save address location of previous function
+                m_stack.at(++m_stackHeight) = i;
+                //Set frame pointer to new location
+                m_fPointer = m_stackHeight + 1;
+                i = --address;
+                break;
+            case RETURN:
+                return_value = static_cast<short>(m_stack.at(m_stackHeight));
+                m_stackHeight -= program.getArgument();
+                i = m_stack.at(m_stackHeight--);
+                m_fPointer = static_cast<unsigned short>(m_stack.at(m_stackHeight--));
+                m_stack.at(++m_stackHeight) = return_value;
                 break;
             case IN:
                 std::cout << "Please enter a value of type short: ";
@@ -54,11 +87,17 @@ void StackCpu::execute() {
             case OUT:
                 std::cout << m_stack.at(m_stackHeight--) << std::endl;
                 break;
+            case HALT:
+                std::exit(0);
+                break;
             case ALLOC:
                 allocate(program.getArgument());
                 break;
             default:
                 throw std::runtime_error("Class StackCpu: Unimplemented instruction");
+            //case MUL:break;
+            //case MOD:break;
+            //case JLT:break;
         }
     }
     std::cout << "Program has successfully finished executing!" << std::endl;
@@ -66,6 +105,10 @@ void StackCpu::execute() {
 
 void StackCpu::add() {
     m_stack.at(++m_stackHeight) = m_stack.at(m_stackHeight--) + m_stack.at(m_stackHeight--);
+}
+
+void StackCpu::sub() {
+    m_stack.at(++m_stackHeight) = m_stack.at(m_stackHeight--) - m_stack.at(m_stackHeight--);
 }
 
 void StackCpu::loadInteger(const short &t_value) {
@@ -85,12 +128,20 @@ void StackCpu::stackToLocal(const short &t_offset) {
     m_stack.at(m_fPointer + static_cast<unsigned short>(t_offset - 1)) = m_stack.at(m_stackHeight--);
 }
 
+bool StackCpu::jumpIfFalse() {
+    auto first_arg = m_stack.at(m_stackHeight--);
+    auto second_arg = m_stack.at(m_stackHeight--);
+
+    return first_arg != second_arg;
+}
+
 void StackCpu::allocate(const short &t_amount) {
 //    for(std::size_t i = 0; i < t_amount; i++) {
 //        //The m_fPointer is the offset of where the memory
 //        //should be allocated.
 //        m_stack.at(i + m_fPointer) = 0;
 //    }
+    ++m_stackHeight;
 }
 
 
@@ -147,8 +198,6 @@ StackCpu StackCpu::parse(const std::string &t_program) {
             temp = Instruction(HALT);
         } else if (boost::starts_with(line, "ALLOC")) {
             temp = Instruction(ALLOC, resolveArg(line, jumps));
-        } else if (boost::starts_with(line, "//")) {
-            continue;
         } else {
             throw std::runtime_error("Class StackCpu: Error while parsing line " + line + ": Unknown keyword");
         }
@@ -173,6 +222,9 @@ std::vector<std::string> StackCpu::splitString(const std::string &t_str, const c
         boost::trim(temp);
 
         if (temp.empty()) {
+            position = i + 1;
+            continue;
+        } else if (boost::starts_with(temp, "//")) {
             position = i + 1;
             continue;
         }
@@ -203,6 +255,7 @@ short StackCpu::resolveArg(const std::string &t_str, const std::map<std::string,
         return search->second;
     }
 
+    //Does not exist, try casting it...
     short value;
     try {
         value = static_cast<short>(std::stoi(arg));
@@ -211,6 +264,5 @@ short StackCpu::resolveArg(const std::string &t_str, const std::map<std::string,
         throw std::runtime_error("Class StackCpu: Error while parsing line " + t_str + ": " + e.what());
     }
 
-    //Does not exist, try casting it...
     return value;
 }

@@ -18,7 +18,7 @@ namespace StackCpuNS {
     private:
         std::array<int, 128> m_stack;
         std::vector<StackAssembly::Instruction> m_program;
-        unsigned short m_stackHeight = 0;
+        unsigned short m_stackHeight = -1;
         unsigned short m_fPointer = 0;
 
         //Constructor
@@ -26,9 +26,11 @@ namespace StackCpuNS {
 
         //Operations
         void add();
+        void sub();
         void loadInteger(const short &t_value);
         void localToStack(const short &t_offset);
         void stackToLocal(const short &t_offset);
+        bool jumpIfFalse();
         void allocate(const short &t_amount);
 
         //Static private functions
