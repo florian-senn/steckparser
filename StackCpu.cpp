@@ -4,25 +4,37 @@
 
 #include "StackCpu.h"
 #include <iostream>
+#include <stack>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
-using namespace StackCpuNS;
+using namespace StCpu;
 
 StackCpu::StackCpu(const std::vector<StackAssembly::Instruction> &t_program) : m_program(t_program) {
     m_stack.fill(-1);
 }
 
-void StackCpu::execute() {
-    for (int i = 0; i < m_program.size(); i++) {
+void StackCpu::push(const int &t_value) {
+    m_stackHeight++;
+    m_stack.at(m_stackHeight) = t_value;
+}
+
+int StackCpu::pop() {
+    int value = m_stack.at(m_stackHeight);
+    m_stack.at(m_stackHeight) = -1;
+    m_stackHeight--;
+
+    return value;
+}
+
+int StackCpu::execute() {
+    for (std::size_t i = 0; i < m_program.size(); i++) {
         using namespace StackAssembly;
 
         const auto &program = m_program.at(i);
-        std::string input;
-        short address;
-        short return_value;
+
         switch (program.getInstruction()) {
             case NOP:
                 break;
@@ -31,6 +43,12 @@ void StackCpu::execute() {
                 break;
             case SUB:
                 sub();
+                break;
+            case MUL:
+                mul();
+                break;
+            case MOD:
+                mod();
                 break;
             case LDI:
                 loadInteger(program.getArgument());
@@ -42,100 +60,145 @@ void StackCpu::execute() {
                 stackToLocal(program.getArgument());
                 break;
             case JUMP:
-                i = program.getArgument() - 1;
+                i = static_cast<std::size_t>(program.getArgument() - 1);
                 break;
             case JE:
                 if (!jumpIfFalse()) {
-                    i = program.getArgument() - 1;
+                    i = static_cast<std::size_t>(program.getArgument() - 1);
                 }
                 break;
             case JNE:
                 if (jumpIfFalse()) {
-                    i = program.getArgument() - 1;
+                    i = static_cast<std::size_t>(program.getArgument() - 1);
+                }
+                break;
+            case JLT:
+                if(jumpIfSmaller()) {
+                    i = static_cast<std::size_t>(program.getArgument() -1);
                 }
                 break;
             case CALL:
-                //Save address location of function
-                address = static_cast<short>(m_stack.at(m_stackHeight--));
-                //Set previous framePointer location
-                m_stack.at(++m_stackHeight) = m_fPointer;
-                //Save address location of previous function
-                m_stack.at(++m_stackHeight) = i;
-                //Set frame pointer to new location
-                m_fPointer = m_stackHeight + 1;
-                i = --address;
+                i = callFunction(program.getArgument(), i);
                 break;
             case RETURN:
-                return_value = static_cast<short>(m_stack.at(m_stackHeight));
-                m_stackHeight -= program.getArgument();
-                i = m_stack.at(m_stackHeight--);
-                m_fPointer = static_cast<unsigned short>(m_stack.at(m_stackHeight--));
-                m_stack.at(++m_stackHeight) = return_value;
+                i = returnFromFunction(program.getArgument());
                 break;
             case IN:
-                std::cout << "Please enter a value of type short: ";
-                std::getline(std::cin, input);
-                short temp;
-                try {
-                    temp = static_cast<short>(std::stoi(input));
-                } catch (const std::invalid_argument &e) {
-                    throw std::runtime_error("Illegal input " + input + ": " + e.what());
-                }
-                m_stack.at(++m_stackHeight) = temp;
-                input.clear();
+                readValue();
                 break;
             case OUT:
-                std::cout << m_stack.at(m_stackHeight--) << std::endl;
+                writeValue();
                 break;
             case HALT:
-                std::exit(0);
-                break;
+                return pop();
             case ALLOC:
                 allocate(program.getArgument());
                 break;
             default:
                 throw std::runtime_error("Class StackCpu: Unimplemented instruction");
-            //case MUL:break;
-            //case MOD:break;
-            //case JLT:break;
         }
     }
-    std::cout << "Program has successfully finished executing!" << std::endl;
+    return 0;
 }
 
 void StackCpu::add() {
-    m_stack.at(++m_stackHeight) = m_stack.at(m_stackHeight--) + m_stack.at(m_stackHeight--);
+    push(pop() + pop());
 }
 
 void StackCpu::sub() {
-    m_stack.at(++m_stackHeight) = m_stack.at(m_stackHeight--) - m_stack.at(m_stackHeight--);
+    push(pop() - pop());
+}
+
+void StackCpu::mul() {
+    push(pop() * pop());
+}
+
+void StackCpu::mod() {
+    push(pop() % pop());
 }
 
 void StackCpu::loadInteger(const short &t_value) {
-    m_stack.at(++m_stackHeight) = t_value;
+    push(t_value);
 }
 
 void StackCpu::localToStack(const short &t_offset) {
-    m_stack.at(++m_stackHeight) = m_stack.at(m_fPointer + static_cast<unsigned short>(t_offset));
+    push(m_stack.at(m_fPointer + t_offset));
 }
 
 void StackCpu::stackToLocal(const short &t_offset) {
-    if (t_offset <= 0) {
-        throw std::runtime_error("Illegal instruction: Attempting to modify"
-                                         "function argument!");
-    }
-
-    m_stack.at(m_fPointer + static_cast<unsigned short>(t_offset - 1)) = m_stack.at(m_stackHeight--);
+    m_stack.at(m_fPointer + t_offset) = pop();
 }
 
 bool StackCpu::jumpIfFalse() {
-    auto first_arg = m_stack.at(m_stackHeight--);
-    auto second_arg = m_stack.at(m_stackHeight--);
+    auto first_arg = pop();
+    auto second_arg = pop();
 
     return first_arg != second_arg;
 }
 
+bool StackCpu::jumpIfSmaller() {
+    auto first_arg = pop();
+    auto second_arg = pop();
+
+    return first_arg < second_arg;
+}
+
+std::size_t StackCpu::callFunction(const short &t_amount, const std::size_t &t_callback) {
+    //Save address location of function
+    short address = static_cast<short>(pop() - 1);
+    //Consume all arguments
+    std::stack<int> args;
+    for (short j = 0; j < t_amount; j++) {
+        args.push(pop());
+    }
+    //Set previous framePointer location
+    push(m_fPointer);
+    //Save address location of previous function
+    push(static_cast<int>(t_callback));
+    //Put all args on top of the stack
+    while(!args.empty()) {
+        push(args.top());
+        args.pop();
+    }
+    //Set frame pointer to new location
+    m_fPointer = m_stackHeight;
+    return static_cast<std::size_t>(address);
+}
+
+std::size_t StackCpu::returnFromFunction(const int &t_amount) {
+    //Save return value
+    auto return_value = static_cast<short>(pop());
+    //Remove locale variables and function arguments
+    m_stackHeight -= t_amount;
+    //Save callback function pointer
+    std::size_t callback = static_cast<std::size_t>(pop());
+    //Reset frame pointer to original location
+    m_fPointer = static_cast<unsigned short>(pop());
+    //Save return value on top of stack
+    push(return_value);
+
+    return callback;
+}
+
+void StackCpu::readValue() {
+    std::string input;
+    std::cout << "Please enter a value of type short: ";
+    std::getline(std::cin, input);
+    short temp;
+    try {
+        temp = static_cast<short>(std::stoi(input));
+    } catch (const std::invalid_argument &e) {
+        throw std::runtime_error("Illegal input " + input + ": " + e.what());
+    }
+    push(temp);
+}
+
+void StackCpu::writeValue() {
+    std::cout << "Consumed value of stack: " << pop() << std::endl;
+}
+
 void StackCpu::allocate(const short &t_amount) {
+    (void)t_amount;
 //    for(std::size_t i = 0; i < t_amount; i++) {
 //        //The m_fPointer is the offset of where the memory
 //        //should be allocated.
@@ -151,7 +214,7 @@ StackCpu StackCpu::parse(const std::string &t_program) {
     std::vector<std::string> lines = splitString(t_program, '\n');
 
     //Resolve gotos
-    for (int i = 0; i < lines.size(); i++) {
+    for (std::size_t i = 0; i < lines.size(); i++) {
         if (boost::ends_with(lines.at(i), ":")) {
             jumps.emplace(lines.at(i).substr(0, lines.at(i).find(':')), i);
             lines.erase(lines.begin() + i);

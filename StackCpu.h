@@ -12,25 +12,35 @@
 
 #include "Instruction.h"
 
-namespace StackCpuNS {
+namespace StCpu {
 
     class StackCpu {
     private:
         std::array<int, 128> m_stack;
         std::vector<StackAssembly::Instruction> m_program;
         unsigned short m_stackHeight = -1;
-        unsigned short m_fPointer = 0;
+        short m_fPointer = -1;
 
         //Constructor
         explicit StackCpu(const std::vector<StackAssembly::Instruction> &t_program);
 
+        void push(const int &t_value);
+        int pop();
+
         //Operations
         void add();
         void sub();
+        void mul();
+        void mod();
         void loadInteger(const short &t_value);
         void localToStack(const short &t_offset);
         void stackToLocal(const short &t_offset);
         bool jumpIfFalse();
+        bool jumpIfSmaller();
+        std::size_t callFunction(const short &t_amount, const std::size_t &t_callback);
+        std::size_t returnFromFunction(const int &t_amount);
+        void readValue();
+        void writeValue();
         void allocate(const short &t_amount);
 
         //Static private functions
@@ -39,7 +49,7 @@ namespace StackCpuNS {
         static short resolveArg(const std::string &t_str, const std::map<std::string, short> &t_jumps);
 
     public:
-        void execute();
+        int execute();
 
         //Static functions
         static StackCpu parse(const std::string &t_program);
