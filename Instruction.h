@@ -33,7 +33,7 @@ namespace StackAssembly {
     public:
         explicit Instruction(INSTRUCTIONS inst);
 
-        explicit Instruction(INSTRUCTIONS inst, const short &arg);
+        explicit Instruction(INSTRUCTIONS inst, short arg);
 
         INSTRUCTIONS getInstruction() const;
 

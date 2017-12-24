@@ -16,7 +16,7 @@ StackCpu::StackCpu(const std::vector<StackAssembly::Instruction> &t_program) : m
     m_stack.fill(-1);
 }
 
-void StackCpu::push(const int &t_value) {
+void StackCpu::push(const int t_value) {
     m_stackHeight++;
     m_stack.at(m_stackHeight) = t_value;
 }
@@ -117,15 +117,15 @@ void StackCpu::mod() {
     push(pop() % pop());
 }
 
-void StackCpu::loadInteger(const short &t_value) {
+void StackCpu::loadInteger(const short t_value) {
     push(t_value);
 }
 
-void StackCpu::localToStack(const short &t_offset) {
+void StackCpu::localToStack(const short t_offset) {
     push(m_stack.at(m_fPointer + t_offset));
 }
 
-void StackCpu::stackToLocal(const short &t_offset) {
+void StackCpu::stackToLocal(const short t_offset) {
     m_stack.at(m_fPointer + t_offset) = pop();
 }
 
@@ -143,7 +143,7 @@ bool StackCpu::jumpIfSmaller() {
     return first_arg < second_arg;
 }
 
-std::size_t StackCpu::callFunction(const short &t_amount, const std::size_t &t_callback) {
+std::size_t StackCpu::callFunction(const short t_amount, const std::size_t t_callback) {
     //Save address location of function
     short address = static_cast<short>(pop() - 1);
     //Consume all arguments
@@ -165,7 +165,7 @@ std::size_t StackCpu::callFunction(const short &t_amount, const std::size_t &t_c
     return static_cast<std::size_t>(address);
 }
 
-std::size_t StackCpu::returnFromFunction(const int &t_amount) {
+std::size_t StackCpu::returnFromFunction(const int t_amount) {
     //Save return value
     auto return_value = static_cast<short>(pop());
     //Remove locale variables and function arguments
@@ -197,7 +197,7 @@ void StackCpu::writeValue() {
     std::cout << "Consumed value of stack: " << pop() << std::endl;
 }
 
-void StackCpu::allocate(const short &t_amount) {
+void StackCpu::allocate(const short t_amount) {
     (void)t_amount;
 //    for(std::size_t i = 0; i < t_amount; i++) {
 //        //The m_fPointer is the offset of where the memory
@@ -270,7 +270,7 @@ StackCpu StackCpu::parse(const std::string &t_program) {
     return StackCpu(instructions);
 }
 
-std::vector<std::string> StackCpu::splitString(const std::string &t_str, const char &t_split_char) {
+std::vector<std::string> StackCpu::splitString(const std::string &t_str, const char t_split_char) {
     std::vector<std::string> lines;
 
     std::string::size_type position = 0;

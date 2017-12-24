@@ -19,7 +19,7 @@ Instruction::Instruction(INSTRUCTIONS inst) : m_inst(inst), m_arg(std::nullopt) 
     }
 }
 
-Instruction::Instruction(INSTRUCTIONS inst, const short &arg) : m_inst(inst), m_arg(std::make_optional(arg)) {
+Instruction::Instruction(INSTRUCTIONS inst, const short arg) : m_inst(inst), m_arg(std::make_optional(arg)) {
     switch (inst) {
         case LDI:
         case LDS:
