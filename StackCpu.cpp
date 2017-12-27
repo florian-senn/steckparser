@@ -73,8 +73,8 @@ int StackCpu::execute() {
                 }
                 break;
             case JLT:
-                if(jumpIfSmaller()) {
-                    i = static_cast<std::size_t>(program.getArgument() -1);
+                if (jumpIfSmaller()) {
+                    i = static_cast<std::size_t>(program.getArgument() - 1);
                 }
                 break;
             case CALL:
@@ -156,7 +156,7 @@ std::size_t StackCpu::callFunction(const short t_amount, const std::size_t t_cal
     //Save address location of previous function
     push(static_cast<int>(t_callback));
     //Put all args on top of the stack
-    while(!args.empty()) {
+    while (!args.empty()) {
         push(args.top());
         args.pop();
     }
@@ -198,7 +198,7 @@ void StackCpu::writeValue() {
 }
 
 void StackCpu::allocate(const short t_amount) {
-    (void)t_amount;
+    (void) t_amount;
 //    for(std::size_t i = 0; i < t_amount; i++) {
 //        //The m_fPointer is the offset of where the memory
 //        //should be allocated.
